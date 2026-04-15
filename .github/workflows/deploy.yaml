@@ -1,45 +1,31 @@
-name: Build CI/CD
+build:
+  runs-on: ubuntu-latest
 
-on:
-  push:
-    branches:
-      - main
+  permissions:
+    contents: write
+    packages: write
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
+  needs: compile
+  if: success()
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
 
-      - name: Install dependencies
-        run: go mod download
+    - name: Log in to GHCR
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run tests
-        run: go test ./...
+    - name: Build Docker image
+      run: docker build -t ghcr.io/sandrabalu/ci_cd_lab:latest .
 
-  compile:
-    runs-on: ubuntu-latest
-    needs: test
-    if: success()
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Compile binary
-        run: go build -o myapp
+    - name: Push Docker image
+      run: docker push ghcr.io/sandrabalu/ci_cd_lab:latest
